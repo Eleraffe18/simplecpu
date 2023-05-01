@@ -8,18 +8,21 @@ import chisel3.util.experimental._
 import Defs._
 
 object AluOpcode {
-    val add  = "b0000".U
-    val sub  = "b1000".U
-    val sll  = "b0001".U
-    val srl  = "b0101".U
-    val sra  = "b1101".U
-    val slt  = "b0010".U
-    val sltu = "b0011".U
-    val xor  = "b0100".U
-    val or   = "b0110".U
-    val and  = "b0111".U
-    val b    = "b1110".U // for lui
-    val add4 = "b1111".U // for jal and jalr
+    val add   = "b00000".U
+    val sub   = "b01000".U
+    val sll64 = "b00001".U
+    val srl64 = "b00101".U
+    val sra64 = "b01101".U
+    val sll32 = "b10001".U
+    val srl32 = "b10101".U
+    val sra32 = "b11101".U
+    val slt   = "b00010".U
+    val sltu  = "b00011".U
+    val xor   = "b00100".U
+    val or    = "b00110".U
+    val and   = "b00111".U
+    val b     = "b11110".U // for lui
+    val add4  = "b11111".U // for jal and jalr
 }
 
 class AluIO extends Bundle {
@@ -27,7 +30,7 @@ class AluIO extends Bundle {
     val ua     = Input(UInt(DW.W))
     val ub     = Input(UInt(DW.W))
     val out    = Output(UInt(DW.W))
-    val cmp     = Output(UInt(5.W))
+    val cmp    = Output(UInt(6.W))
 }
 
 class Alu extends Module {
@@ -55,10 +58,13 @@ class Alu extends Module {
         }
         is(AluOpcode.add4) {
             io.out := ua + 4.U
-        } 
+        }
         is(AluOpcode.b) {
             io.out := ub
-        } 
+        }
+        is(AluOpcode.sll64) {
+            io.out := ua << shamt64
+        }
     }
 
 }

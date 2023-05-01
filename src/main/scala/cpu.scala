@@ -36,31 +36,31 @@ class Cpu extends Module {
     val decode  = Module(new Decode)
     val regfile = Module(new Regfile)
 
-    val aluRes = Mux(decode.io.sig.cut32, Cat(Fill(32, alu.io.out(31)), alu.io.out(31, 0)), alu.io.out)
-
     io.pc := pc
-    
+
     io.err := decode.io.sig.err
 
     io.imem.addr  := pc & (~(7.U(64.W)))
     io.imem.wdata := DontCare
     io.imem.en    := true.B
     io.imem.we    := false.B
-    io.inst := inst
+    io.inst       := inst
 
     decode.io.inst := inst
+
+    val res = Mux(decode.io.sig.osel === Sel.alu, alu.io.out, io.dmem.rdata)
 
     regfile.io.rs1.addr := inst(19, 15)
     regfile.io.rs2.addr := inst(24, 20)
     regfile.io.rd.addr  := inst(11, 7)
-    regfile.io.rd.data  := Mux(decode.io.sig.osel === Sel.alu, aluRes, io.dmem.rdata)
+    regfile.io.rd.data  := Mux(decode.io.sig.cut32, Cat(Fill(32, res(31)), res(31, 0)), res)
     regfile.io.rd.we    := decode.io.sig.rdWe
 
     alu.io.ua     := Mux(decode.io.sig.asel === Sel.rs1, regfile.io.rs1.data, ipc)
     alu.io.ub     := Mux(decode.io.sig.bsel === Sel.rs2, regfile.io.rs2.data, decode.io.imm)
     alu.io.opcode := decode.io.sig.aluop
 
-    io.dmem.addr  := aluRes
+    io.dmem.addr  := alu.io.out
     io.dmem.wdata := regfile.io.rs2.data
     io.dmem.en    := decode.io.sig.memEn
     io.dmem.we    := decode.io.sig.memWe

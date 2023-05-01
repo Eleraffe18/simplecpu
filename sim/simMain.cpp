@@ -6,6 +6,15 @@
 
 VCpu *dut;
 
+size_t getFileLength(std::ifstream &ifs) {
+    const size_t begin = ifs.tellg();
+    ifs.seekg(0, std::ios::end);
+    const size_t end = ifs.tellg();
+    const size_t fsize = end-begin;
+    ifs.seekg(0, std::ios::beg);
+    return fsize;
+}
+
 class Device {
 public:
     uint64_t startAddr;
@@ -22,20 +31,57 @@ public:
     }
     Rom(const char *file, size_t len, uint64_t begin) {
         std::ifstream fs(file, std::ios::in | std::ios::binary);
+        size_t fileLen = getFileLength(fs);
+        uint64_t romLen = (len + 7) / sizeof(uint64_t);
         assert(!(begin & 0x7));
         startAddr = begin;
-        endAddr = begin + len * sizeof(uint64_t) - 1;
-        data = new uint64_t[len];
+        endAddr = begin + romLen * sizeof(uint64_t) - 1;
+        data = new uint64_t[romLen];
+        memset(data, 0, romLen * sizeof(uint64_t));
         if(!fs) {
-            std::cout << "[Rom] Can't open " << file << ". Initialized with 0." << std::endl;
-            memset(data, 0, len * sizeof(uint64_t));
+            std::cout << "[Rom] Can't open " << file << std::endl;
             fs.close();
             return;
         }
-        fs.read(reinterpret_cast<char *>(data), len * sizeof(uint64_t));
+        fs.read(reinterpret_cast<char *>(data), fileLen);
         fs.close();
     }
     ~Rom() {
+        delete[] data;
+    }
+};
+
+class Ram: public Device {
+public:
+    uint64_t *data;
+    uint64_t access(uint64_t addr, uint64_t wdata, bool we) {
+        assert(startAddr <= addr && addr <= endAddr);
+        if(we) {
+            data[(addr - startAddr) / sizeof(uint64_t)] = wdata;
+        }
+        return data[(addr - startAddr) / sizeof(uint64_t)];
+    }
+    Ram(size_t len, uint64_t begin) {
+        uint64_t ramLen = (len + 7) / sizeof(uint64_t);
+        assert(!(begin & 0x7));
+        startAddr = begin;
+        endAddr = begin + ramLen * sizeof(uint64_t) - 1;
+        data = new uint64_t[ramLen];
+        memset(data, 0, ramLen * sizeof(uint64_t));
+    }
+    void load(const char *file) {
+        std::ifstream fs(file, std::ios::in | std::ios::binary);
+        size_t len = getFileLength(fs);
+        assert(len <= (endAddr + 1 - startAddr));
+        if(!fs) {
+            std::cout << "[Rom] Can't open " << file << std::endl;
+            fs.close();
+            return;
+        }
+        fs.read(reinterpret_cast<char *>(data), len);
+        fs.close();
+    }
+    ~Ram() {
         delete[] data;
     }
 };
@@ -79,12 +125,15 @@ public:
 
 int main(int argc, char **argv) {
 
-    MMReg simEnd(0x80000800);
+    MMReg simEnd(0xB0000000);
     MMReg serial(0xA0000048);
+    Ram ram(0x20000000ul, 0x80000000ul);
 
-    mem.add(new Rom("sim/rom.bin", 35, 0x80000000ul)); // related to simplecpu/
+    mem.add(&ram);
     mem.add(&simEnd);
     mem.add(&serial);
+
+    ram.load("sim/Helloworld.bin");
 
     Verilated::commandArgs(argc, argv);
     dut = new VCpu;
@@ -121,8 +170,10 @@ int main(int argc, char **argv) {
         dut->eval();
         tracer->dump(simTime++);
 
+        printf("inst = %08X\n", dut->io_inst);
+
         if(dut->io_err) {
-            printf("Instruction not implemented: %016lX \t%08X\n", dut->io_pc, dut->io_inst);
+            printf("Instruction not implemented: %08X\n", dut->io_inst);
             break;
         }
 
