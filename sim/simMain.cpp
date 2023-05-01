@@ -149,16 +149,18 @@ int main(int argc, char **argv) {
     dut->eval();
     tracer->dump(simTime++);
 
+    dut->clock = 0;
     dut->reset = 1;
+    dut->eval();
+    tracer->dump(simTime++);
+
     dut->clock = 1;
     dut->eval();
     tracer->dump(simTime++);
 
     dut->clock = 0;
-    dut->eval();
-    tracer->dump(simTime++);
-
     dut->reset = 0;
+    dut->eval();
 
     // while(!simEnd.data) {
     for(int i = 0; (!simEnd.data); i++) {
@@ -166,6 +168,7 @@ int main(int argc, char **argv) {
         printf("PC = %016lX\n", dut->io_pc);
 
         dut->io_imem_rdata = mem.access(dut->io_pc, 0, false);
+        tracer->dump(simTime++);
         dut->clock = 1;
         dut->eval();
         tracer->dump(simTime++);
@@ -180,7 +183,6 @@ int main(int argc, char **argv) {
         dut->io_dmem_rdata = (dut->io_dmem_en) ? mem.access(dut->io_dmem_addr, dut->io_dmem_wdata, dut->io_dmem_we) : 0;
         dut->clock = 0;
         dut->eval();
-        tracer->dump(simTime++);
 
         if(serial.data != 0) {
             std::cerr.put(static_cast<char>(serial.data));
