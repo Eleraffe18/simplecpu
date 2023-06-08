@@ -48,7 +48,7 @@ class Cpu extends Module {
 
     decode.io.inst := inst
 
-    val res = Mux(decode.io.sig.osel === Sel.alu, alu.io.out, io.dmem.rdata)
+    val res = Mux(decode.io.sig.osel === RdFromAlu.sel.U, alu.io.out, io.dmem.rdata)
 
     regfile.io.rs1.addr := inst(19, 15)
     regfile.io.rs2.addr := inst(24, 20)
@@ -56,8 +56,8 @@ class Cpu extends Module {
     regfile.io.rd.data  := Mux(decode.io.sig.cut32, Cat(Fill(32, res(31)), res(31, 0)), res)
     regfile.io.rd.we    := decode.io.sig.rdWe
 
-    alu.io.ua     := Mux(decode.io.sig.asel === Sel.rs1, regfile.io.rs1.data, ipc)
-    alu.io.ub     := Mux(decode.io.sig.bsel === Sel.rs2, regfile.io.rs2.data, decode.io.imm)
+    alu.io.ua     := Mux(decode.io.sig.asel === AFromRs1.sel.U, regfile.io.rs1.data, ipc)
+    alu.io.ub     := Mux(decode.io.sig.bsel === BFromRs2.sel.U, regfile.io.rs2.data, decode.io.imm)
     alu.io.opcode := decode.io.sig.aluop
 
     io.dmem.addr  := alu.io.out

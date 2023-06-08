@@ -13,3 +13,4 @@ clean:
 	-@rm -rf build
 	-@rm -rf sim/obj_dir
 	-@rm -rf sim/build
+	-@rm sim/*.vcd

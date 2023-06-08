@@ -30,7 +30,7 @@ class AluIO extends Bundle {
     val ua     = Input(UInt(DW.W))
     val ub     = Input(UInt(DW.W))
     val out    = Output(UInt(DW.W))
-    val cmp    = Output(UInt(6.W))
+    val cmp    = Output(UInt(5.W))
 }
 
 class Alu extends Module {
